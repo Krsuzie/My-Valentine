@@ -379,6 +379,9 @@
       text-align:center;
       padding: 24px 18px;
       width:min(680px, 100%);
+      max-height: 92vh;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
     }
     .celebrate h2{
       margin:0 0 10px;
@@ -592,6 +595,7 @@
       border: 1px solid rgba(255,255,255,.18);
       object-fit: cover;
       box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
+      transform: scaleX(-1);
     }
 
     /* Result image (still compact) */
@@ -1206,6 +1210,8 @@
         // Step 2 (next page): show selfie page
         if (dateChooser) dateChooser.classList.add('hidden');
         if (selfieStep) selfieStep.classList.add('show');
+        // Ensure the new page starts at the top on mobile
+        try { selfieStep && selfieStep.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(_) {}
 
         if (!selfieConfirm) return;
 
@@ -1350,13 +1356,18 @@
           ctx.closePath();
           ctx.clip();
 
-          // Cover-crop the selfie into the photo box
+          // Cover-crop the selfie into the photo box (mirrored correction so export matches real-world orientation)
           const scale = Math.max(photoW / vw, photoH / vh);
           const sw = photoW / scale;
           const sh = photoH / scale;
           const sx = (vw - sw) / 2;
           const sy = (vh - sh) / 2;
-          ctx.drawImage(video, sx, sy, sw, sh, photoX, photoY, photoW, photoH);
+          // Draw mirrored correction so export matches real-world orientation
+          ctx.save();
+          ctx.translate(photoX + photoW, 0);
+          ctx.scale(-1, 1);
+          ctx.drawImage(video, sx, sy, sw, sh, 0, photoY, photoW, photoH);
+          ctx.restore();
           ctx.restore();
 
           // Bouquet overlay (so it shows up on the downloadable image too)
@@ -1411,6 +1422,14 @@
             dl.href = dataUrl;
             dl.classList.remove('hidden');
           }
+
+          // On phones, scroll to the result/download so it’s visible
+          setTimeout(() => {
+            const target = (dl && !dl.classList.contains('hidden')) ? dl : resultImg;
+            if (target && target.scrollIntoView) {
+              target.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            }
+          }, 60);
         };
 
         const capture = () => {
